@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "LocaGate - Control Panel",
+        "title": "LocaGate - Control Panel by ChinhDev",
         "width": 900,
         "height": 650
       }
