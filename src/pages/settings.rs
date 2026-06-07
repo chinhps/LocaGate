@@ -108,7 +108,7 @@ pub fn Settings(
                 }
 
                 div {
-                    style: "display: flex; align-items: center; gap: var(--spacing-md); margin-top: var(--spacing-sm);",
+                    style: "display: flex; align-items: center; gap: var(--spacing-md); margin-top: var(--spacing-sm); flex-wrap: wrap;",
                     Button {
                         variant: "primary".to_string(),
                         onclick: handle_save,
@@ -131,6 +131,95 @@ pub fn Settings(
                     div {
                         style: "color: var(--color-error); font-size: 13px; font-family: var(--font-mono); background: var(--color-error-dim); border: 1px solid var(--color-error-border); padding: 8px 12px; border-radius: var(--radius-sm);",
                         "{error_msg}"
+                    }
+                }
+            }
+
+            // Guide and Deploy Card
+            div {
+                class: "settings-card",
+                style: "display: flex; flex-direction: column; gap: var(--spacing-md);",
+                div {
+                    class: "settings-card-title",
+                    "How to Setup Your Own Relay"
+                }
+                p {
+                    style: "font-size: 13px; line-height: 1.5; color: var(--color-muted); margin: 0;",
+                    "To host your own secure tunnel proxy, follow these steps to deploy and configure a Cloudflare Worker:"
+                }
+                div {
+                    style: "display: flex; flex-direction: column; gap: 12px; font-size: 13px; line-height: 1.4;",
+                    div {
+                        strong { "1. Create Cloudflare Account: " }
+                        span { "You need a free Cloudflare account. If you don't have one, " }
+                        a {
+                            href: "#",
+                            style: "color: var(--color-accent); text-decoration: underline;",
+                            onclick: move |e| {
+                                e.prevent_default();
+                                #[derive(serde::Serialize)]
+                                struct OpenUrlArgs { url: String }
+                                spawn(async move {
+                                    let _ = crate::app::call_tauri::<(), _>("open_url", &OpenUrlArgs { url: "https://dash.cloudflare.com/sign-up".to_string() }).await;
+                                });
+                            },
+                            "sign up here"
+                        }
+                        span { "." }
+                    }
+                    div {
+                        strong { "2. Deploy the Worker: " }
+                        span { "Deploy the relay server code to your Cloudflare account. You can deploy it with one click: " }
+                        br {}
+                        a {
+                            href: "#",
+                            style: "display: inline-block; margin-top: 6px;",
+                            onclick: move |e| {
+                                e.prevent_default();
+                                #[derive(serde::Serialize)]
+                                struct OpenUrlArgs { url: String }
+                                spawn(async move {
+                                    let _ = crate::app::call_tauri::<(), _>("open_url", &OpenUrlArgs { url: "https://deploy.workers.cloudflare.com/?url=https://github.com/chinhps/LocaGate".to_string() }).await;
+                                });
+                            },
+                            img {
+                                src: "https://deploy.workers.cloudflare.com/button.svg",
+                                alt: "Deploy to Cloudflare Workers"
+                            }
+                        }
+                    }
+                    div {
+                        strong { "3. Configure AUTH_TOKEN: " }
+                        span { "Once deployed, go to your Cloudflare Workers dashboard, select your worker, go to " }
+                        strong { "Settings > Variables" }
+                        span { ", and add a variable named " }
+                        code { style: "background: var(--color-bg-code); padding: 2px 4px; border-radius: 3px;", "AUTH_TOKEN" }
+                        span { " with a secure password. Paste that same password into the 'Authentication Token' field above." }
+                    }
+                }
+                div {
+                    style: "display: flex; gap: var(--spacing-md); margin-top: var(--spacing-sm); flex-wrap: wrap;",
+                    Button {
+                        variant: "secondary".to_string(),
+                        onclick: move |_| {
+                            #[derive(serde::Serialize)]
+                            struct OpenUrlArgs { url: String }
+                            spawn(async move {
+                                let _ = crate::app::call_tauri::<(), _>("open_url", &OpenUrlArgs { url: "https://dash.cloudflare.com/?to=/:account/workers-and-pages".to_string() }).await;
+                            });
+                        },
+                        "Go to Workers Dashboard"
+                    }
+                    Button {
+                        variant: "secondary".to_string(),
+                        onclick: move |_| {
+                            #[derive(serde::Serialize)]
+                            struct OpenUrlArgs { url: String }
+                            spawn(async move {
+                                let _ = crate::app::call_tauri::<(), _>("open_url", &OpenUrlArgs { url: "https://github.com/chinhps/LocaGate".to_string() }).await;
+                            });
+                        },
+                        "View Source Code"
                     }
                 }
             }

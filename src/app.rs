@@ -74,6 +74,10 @@ pub fn App() -> Element {
     let mut statuses = use_signal(|| HashMap::<String, String>::new());
     let mut logs = use_signal(|| Vec::<crate::pages::logs::RequestLog>::new());
 
+    // Dev mode states
+    let mut developer_mode = use_signal(|| false);
+    let mut click_count = use_signal(|| 0);
+
     // Load configurations and active statuses on start
     let _load_config = use_resource(move || async move {
         if let Ok(conf) = call_tauri::<AppConfig, _>("get_config", &()).await {
@@ -226,17 +230,33 @@ pub fn App() -> Element {
                             onclick: move |_| current_page.set(ActivePage::Logs),
                             "Request Logs"
                         }
-                        li {
-                            class: "nav-item {settings_class}",
-                            onclick: move |_| current_page.set(ActivePage::Settings),
-                            "Settings"
+                        if developer_mode() {
+                            li {
+                                class: "nav-item {settings_class}",
+                                onclick: move |_| current_page.set(ActivePage::Settings),
+                                "Settings"
+                            }
                         }
                     }
                 }
                 
                 div {
                     class: "sidebar-footer",
-                    "status: online"
+                    style: "cursor: pointer; user-select: none;",
+                    onclick: move |_| {
+                        let count = click_count() + 1;
+                        if count >= 3 {
+                            developer_mode.set(!developer_mode());
+                            click_count.set(0);
+                        } else {
+                            click_count.set(count);
+                        }
+                    },
+                    if developer_mode() {
+                        "status: online (Dev Mode)"
+                    } else {
+                        "status: online"
+                    }
                 }
             }
             

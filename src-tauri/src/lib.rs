@@ -7,6 +7,11 @@ use crate::tunnel::manager::{
     start_tunnel, stop_tunnel, get_active_tunnels, TunnelManager
 };
 
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    tauri_plugin_opener::open_url(url, None::<&str>).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
@@ -24,7 +29,8 @@ pub fn run() {
             delete_tunnel,
             start_tunnel,
             stop_tunnel,
-            get_active_tunnels
+            get_active_tunnels,
+            open_url
         ]);
 
     #[cfg(desktop)]

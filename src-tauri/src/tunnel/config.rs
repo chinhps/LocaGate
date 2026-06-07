@@ -25,8 +25,8 @@ pub struct AppConfig {
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            worker_url: "http://localhost:8787".to_string(), // Default for local dev wrangler
-            auth_token: "locagate_secret_token_change_me".to_string(),
+            worker_url: "".to_string(),
+            auth_token: "".to_string(),
             tunnels: Vec::new(),
         }
     }
