@@ -5,3 +5,10 @@
 .claude
 .agents
 skills-lock.json
+.impeccable
+worker/node_modules
+docs
+worker/package-lock.json
+worker/.wrangler
+DESIGN.md
+PRODUCT.md

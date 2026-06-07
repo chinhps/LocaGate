@@ -1,4 +1,8 @@
 mod app;
+pub mod components;
+pub mod pages;
+pub mod config;
+
 
 use app::App;
 use dioxus::prelude::*;
@@ -8,3 +12,4 @@ fn main() {
     dioxus_logger::init(Level::INFO).expect("failed to init logger");
     launch(App);
 }
+

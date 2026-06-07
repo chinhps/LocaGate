@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tunnel-chinhdev",
+  "productName": "LocaGate",
   "version": "0.1.0",
-  "identifier": "com.chinhdev.tunnel-chinhdev",
+  "identifier": "com.chinhdev.locagate",
   "build": {
     "beforeDevCommand": "dx serve --port 1420",
     "devUrl": "http://localhost:1420",
@@ -13,9 +13,9 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "tunnel-chinhdev",
-        "width": 800,
-        "height": 600
+        "title": "LocaGate - Control Panel",
+        "width": 900,
+        "height": 650
       }
     ],
     "security": {

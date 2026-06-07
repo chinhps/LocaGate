@@ -1,14 +1,47 @@
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+use tauri::Manager;
+
+pub mod tunnel;
+
+use crate::tunnel::manager::{
+    get_config, update_settings, save_tunnel, delete_tunnel,
+    start_tunnel, stop_tunnel, get_active_tunnels, TunnelManager
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .setup(|app| {
+            // Load configuration from disk
+            let config = tunnel::manager::load_config_from_disk(app.handle());
+            app.manage(TunnelManager::new(config));
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_config,
+            update_settings,
+            save_tunnel,
+            delete_tunnel,
+            start_tunnel,
+            stop_tunnel,
+            get_active_tunnels
+        ]);
+
+    #[cfg(desktop)]
+    {
+        // Add desktop specific configurations if needed
+    }
+
+    let app = builder
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application");
+
+    app.run(|app_handle, event| {
+        if let tauri::RunEvent::Exit = event {
+            // Stop all active tunnels on app exit
+            if let Some(manager) = app_handle.try_state::<TunnelManager>() {
+                manager.stop_all();
+            }
+        }
+    });
 }

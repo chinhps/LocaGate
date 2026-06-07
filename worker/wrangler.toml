@@ -1,0 +1,11 @@
+name = "locagate-relay"
+main = "src/index.ts"
+compatibility_date = "2024-04-03"
+
+[[durable_objects.bindings]]
+name = "TUNNEL_RELAY"
+class_name = "TunnelRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TunnelRelay"]
