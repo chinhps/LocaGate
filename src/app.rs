@@ -75,7 +75,7 @@ pub fn App() -> Element {
     let mut logs = use_signal(|| Vec::<crate::pages::logs::RequestLog>::new());
 
     // Dev mode states
-    let mut developer_mode = use_signal(|| false);
+    let mut developer_mode = use_signal(|| true);
     let mut click_count = use_signal(|| 0);
 
     // Load configurations and active statuses on start
@@ -252,11 +252,7 @@ pub fn App() -> Element {
                             click_count.set(count);
                         }
                     },
-                    if developer_mode() {
-                        "status: online (Dev Mode)"
-                    } else {
-                        "status: online"
-                    }
+                    "status: online"
                 }
             }
             

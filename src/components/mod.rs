@@ -1,6 +1,21 @@
 use dioxus::prelude::*;
 use crate::config::{TunnelConfig, TunnelType};
 use wasm_bindgen::JsCast;
+use qrcodegen::{QrCode, QrCodeEcc};
+
+fn generate_qr_svg_path(text: &str) -> Option<(String, i32)> {
+    let qr = QrCode::encode_text(text, QrCodeEcc::Medium).ok()?;
+    let size = qr.size();
+    let mut path = String::new();
+    for y in 0..size {
+        for x in 0..size {
+            if qr.get_module(x, y) {
+                path.push_str(&format!("M{} {}h1v1h-1z ", x, y));
+            }
+        }
+    }
+    Some((path, size))
+}
 
 #[component]
 pub fn Button(
@@ -47,7 +62,11 @@ pub fn TextInput(
 
 #[component]
 pub fn StatusPill(status: String) -> Element {
-    let status_class = status.to_lowercase();
+    let status_class = match status.as_str() {
+        "connected" => "online".to_string(),
+        "connecting_error" => "error".to_string(),
+        _ => status.to_lowercase(),
+    };
     let display_status = match status.as_str() {
         "connecting_error" => "CONN ERR",
         "connecting" => "CONNECTING",
@@ -116,6 +135,9 @@ pub fn TunnelCard(
     ondelete: EventHandler<MouseEvent>,
     worker_url: String,
 ) -> Element {
+    let mut show_qr = use_signal(|| false);
+    let mut copied_qr_url = use_signal(|| false);
+
     let is_active = status == "connected" || status == "connecting" || status == "connecting_error";
     let card_active_class = if is_active { "active-tunnel" } else { "" };
 
@@ -166,9 +188,33 @@ pub fn TunnelCard(
                 div {
                     class: "tunnel-detail-row",
                     span { class: "tunnel-detail-label", "Public URL" }
-                    span {
-                        class: "tunnel-detail-val",
-                        a { href: "{public_url}", target: "_blank", "{public_url}" }
+                    div {
+                        style: "display: inline-flex; align-items: center; gap: 8px;",
+                        span {
+                            class: "tunnel-detail-val",
+                            a { href: "{public_url}", target: "_blank", "{public_url}" }
+                        }
+                        if status == "connected" {
+                            button {
+                                class: "qr-btn",
+                                title: "Show QR Code",
+                                onclick: move |_| show_qr.set(true),
+                                svg {
+                                    view_box: "0 0 24 24",
+                                    width: "14",
+                                    height: "14",
+                                    fill: "none",
+                                    stroke: "currentColor",
+                                    stroke_width: "2",
+                                    stroke_linecap: "round",
+                                    stroke_linejoin: "round",
+                                    rect { x: "3", y: "3", width: "7", height: "7" }
+                                    rect { x: "14", y: "3", width: "7", height: "7" }
+                                    rect { x: "14", y: "14", width: "7", height: "7" }
+                                    rect { x: "3", y: "14", width: "7", height: "7" }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -193,6 +239,95 @@ pub fn TunnelCard(
                     onclick: move |e| ondelete.call(e),
                     disabled: is_active,
                     "Delete"
+                }
+            }
+        }
+        if show_qr() {
+            {
+                let qr_info = generate_qr_svg_path(&public_url);
+                let (path_d, view_box, has_qr) = match qr_info {
+                    Some((path, size)) => (path, format!("0 0 {} {}", size, size), true),
+                    None => ("".to_string(), "0 0 100 100".to_string(), false)
+                };
+                let modal_url_copy = public_url.clone();
+                let handle_modal_copy = move |_| {
+                    if let Some(window) = web_sys::window() {
+                        let clipboard = window.navigator().clipboard();
+                        let _ = clipboard.write_text(&modal_url_copy);
+                        copied_qr_url.set(true);
+                        let mut copied_sig = copied_qr_url.clone();
+                        let closure = wasm_bindgen::closure::Closure::wrap(Box::new(move || {
+                            copied_sig.set(false);
+                        }) as Box<dyn FnMut()>);
+                        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(
+                            closure.as_ref().unchecked_ref(),
+                            2000,
+                        );
+                        closure.forget();
+                    }
+                };
+                rsx! {
+                    div {
+                        class: "qr-modal-backdrop",
+                        onclick: move |_| show_qr.set(false),
+                        div {
+                            class: "qr-modal-card",
+                            onclick: move |e| e.stop_propagation(),
+                            
+                            div {
+                                class: "qr-modal-header",
+                                h3 { class: "qr-modal-title", "{config.name}" }
+                                button {
+                                    class: "qr-modal-close-x",
+                                    onclick: move |_| show_qr.set(false),
+                                    "×"
+                                }
+                            }
+                            
+                            div {
+                                class: "qr-modal-body",
+                                if has_qr {
+                                    div {
+                                        class: "qr-code-container",
+                                        svg {
+                                            view_box: "{view_box}",
+                                            class: "qr-code-svg",
+                                            path {
+                                                d: "{path_d}",
+                                                fill: "#000000"
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    p { "Failed to generate QR code" }
+                                }
+                                
+                                div {
+                                    class: "qr-modal-url-section",
+                                    span { class: "qr-modal-url-label", "Public Address:" }
+                                    div {
+                                        class: "qr-modal-url-box",
+                                        span { class: "qr-modal-url-text", "{public_url}" }
+                                        button {
+                                            class: "ds-btn ds-btn-ghost",
+                                            style: "padding: 2px 6px; font-size: 10px; height: 20px; border: 1px solid var(--color-border);",
+                                            onclick: handle_modal_copy,
+                                            if copied_qr_url() { "COPIED" } else { "COPY" }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            div {
+                                class: "qr-modal-footer",
+                                Button {
+                                    variant: "secondary".to_string(),
+                                    onclick: move |_| show_qr.set(false),
+                                    "Close"
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
