@@ -47,6 +47,7 @@ pub fn TextInput(
     #[props(default = "".to_string())] placeholder: String,
     oninput: EventHandler<FormEvent>,
     #[props(default = "text".to_string())] r#type: String,
+    #[props(default = false)] disabled: bool,
 ) -> Element {
     let t = r#type.clone();
     rsx! {
@@ -55,6 +56,7 @@ pub fn TextInput(
             r#type: "{t}",
             value: "{value}",
             placeholder: "{placeholder}",
+            disabled: disabled,
             oninput: move |e| oninput.call(e)
         }
     }
@@ -133,6 +135,7 @@ pub fn TunnelCard(
     onstart: EventHandler<MouseEvent>,
     onstop: EventHandler<MouseEvent>,
     ondelete: EventHandler<MouseEvent>,
+    onedit: EventHandler<MouseEvent>,
     worker_url: String,
 ) -> Element {
     let mut show_qr = use_signal(|| false);
@@ -233,6 +236,12 @@ pub fn TunnelCard(
                         onclick: move |e| onstart.call(e),
                         "Start"
                     }
+                }
+                Button {
+                    variant: "ghost".to_string(),
+                    onclick: move |e| onedit.call(e),
+                    disabled: is_active,
+                    "Edit"
                 }
                 Button {
                     variant: "ghost".to_string(),

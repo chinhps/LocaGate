@@ -77,6 +77,7 @@ pub fn App() -> Element {
     // Dev mode states
     let mut developer_mode = use_signal(|| true);
     let mut click_count = use_signal(|| 0);
+    let mut editing_tunnel = use_signal(|| Option::<TunnelConfig>::None);
 
     // Load configurations and active statuses on start
     let _load_config = use_resource(move || async move {
@@ -208,7 +209,10 @@ pub fn App() -> Element {
                         class: "brand-section",
                         h1 {
                             class: "brand-title",
-                            span { class: "brand-dot" }
+                            img {
+                                src: "/assets/app_icon.png",
+                                class: "brand-logo"
+                            }
                             "LocaGate"
                         }
                     }
@@ -222,7 +226,10 @@ pub fn App() -> Element {
                         }
                         li {
                             class: "nav-item {add_tunnel_class}",
-                            onclick: move |_| current_page.set(ActivePage::AddTunnel),
+                            onclick: move |_| {
+                                editing_tunnel.set(None);
+                                current_page.set(ActivePage::AddTunnel);
+                            },
                             "Add Tunnel"
                         }
                         li {
@@ -270,11 +277,20 @@ pub fn App() -> Element {
                                 onstart: handle_start,
                                 onstop: handle_stop,
                                 ondelete: handle_delete,
+                                onedit: move |config: TunnelConfig| {
+                                    editing_tunnel.set(Some(config));
+                                    current_page.set(ActivePage::AddTunnel);
+                                }
                             }
                         },
                         ActivePage::AddTunnel => rsx! {
                             AddTunnel {
                                 onsave: handle_save_tunnel,
+                                editing_tunnel: editing_tunnel.cloned(),
+                                oncancel: move |_| {
+                                    editing_tunnel.set(None);
+                                    current_page.set(ActivePage::Dashboard);
+                                }
                             }
                         },
                         ActivePage::Logs => rsx! {

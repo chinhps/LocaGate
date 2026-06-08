@@ -11,6 +11,7 @@ pub fn Dashboard(
     onstart: EventHandler<String>,
     onstop: EventHandler<String>,
     ondelete: EventHandler<String>,
+    onedit: EventHandler<TunnelConfig>,
 ) -> Element {
     let tunnels_list = tunnels.read();
 
@@ -39,6 +40,7 @@ pub fn Dashboard(
                             let onstart_id = id.clone();
                             let onstop_id = id.clone();
                             let ondelete_id = id.clone();
+                            let onedit_config = config.clone();
                             rsx! {
                                 TunnelCard {
                                     key: "{config.id}",
@@ -48,6 +50,7 @@ pub fn Dashboard(
                                     onstart: move |_| onstart.call(onstart_id.clone()),
                                     onstop: move |_| onstop.call(onstop_id.clone()),
                                     ondelete: move |_| ondelete.call(ondelete_id.clone()),
+                                    onedit: move |_| onedit.call(onedit_config.clone()),
                                 }
                             }
                         }

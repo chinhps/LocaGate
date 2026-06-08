@@ -232,9 +232,18 @@ pub fn Settings(
                     style: "font-family: var(--font-sans);",
                     "System Info"
                 }
-                div { "LocaGate Client: v0.1.0" }
+                div { "LocaGate Client: v0.1.2" }
                 div { "Dioxus Core: v0.6.3" }
-                div { "Tauri Framework: v2.x" }
+                div { "Tauri Framework: v2.11.0" }
+                div {
+                    " Powered by "
+                    a {
+                        href: "https://chinh.dev",
+                        target: "_blank",
+                        style: "color: var(--color-primary); text-decoration: underline;",
+                        "ChinhDEV"
+                    }
+                }
             }
         }
     }

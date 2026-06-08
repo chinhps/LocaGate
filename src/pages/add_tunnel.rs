@@ -2,16 +2,46 @@ use dioxus::prelude::*;
 use crate::config::{TunnelConfig, TunnelType};
 use crate::components::{Button, TextInput};
 
+fn generate_random_suffix() -> String {
+    let val = (js_sys::Math::random() * 65536.0) as u32;
+    format!("{:04x}", val)
+}
+
 #[component]
 pub fn AddTunnel(
     onsave: EventHandler<TunnelConfig>,
+    editing_tunnel: Option<TunnelConfig>,
+    oncancel: EventHandler<MouseEvent>,
 ) -> Element {
-    let mut tunnel_type = use_signal(|| TunnelType::Port);
-    let mut local_port = use_signal(|| "8000".to_string());
-    let mut vdomain_addr = use_signal(|| "127.0.0.1:80".to_string());
-    let mut host_header = use_signal(|| "mysite.local".to_string());
-    let mut custom_name = use_signal(|| "".to_string());
-    let mut custom_id = use_signal(|| "".to_string());
+    let is_editing = editing_tunnel.is_some();
+
+    let initial_type = editing_tunnel.as_ref().map(|t| t.tunnel_type).unwrap_or(TunnelType::Port);
+    let initial_port = editing_tunnel.as_ref().map(|t| {
+        if t.tunnel_type == TunnelType::Port {
+            t.local_addr.strip_prefix("127.0.0.1:").unwrap_or(&t.local_addr).to_string()
+        } else {
+            "8000".to_string()
+        }
+    }).unwrap_or_else(|| "8000".to_string());
+
+    let initial_vdomain = editing_tunnel.as_ref().map(|t| {
+        if t.tunnel_type == TunnelType::VirtualDomain {
+            t.local_addr.clone()
+        } else {
+            "127.0.0.1:80".to_string()
+        }
+    }).unwrap_or_else(|| "127.0.0.1:80".to_string());
+
+    let initial_host = editing_tunnel.as_ref().and_then(|t| t.host_header.clone()).unwrap_or_else(|| "mysite.local".to_string());
+    let initial_name = editing_tunnel.as_ref().map(|t| t.name.clone()).unwrap_or_default();
+    let initial_id = editing_tunnel.as_ref().map(|t| t.id.clone()).unwrap_or_default();
+
+    let mut tunnel_type = use_signal(|| initial_type);
+    let mut local_port = use_signal(|| initial_port);
+    let mut vdomain_addr = use_signal(|| initial_vdomain);
+    let mut host_header = use_signal(|| initial_host);
+    let mut custom_name = use_signal(|| initial_name);
+    let mut custom_id = use_signal(|| initial_id);
 
     let mut error_msg = use_signal(|| "".to_string());
 
@@ -24,6 +54,8 @@ pub fn AddTunnel(
         .filter(|c| c.is_alphanumeric() || *c == '-')
         .collect::<String>();
 
+    let computed_id_for_submit = computed_id.clone();
+
     let handle_submit = move |_| {
         let final_name = if custom_name.read().trim().is_empty() {
             computed_name.clone()
@@ -31,12 +63,27 @@ pub fn AddTunnel(
             custom_name.read().clone()
         };
 
-        let final_id = if custom_id.read().trim().is_empty() {
-            computed_id.clone()
+        let final_id = if is_editing {
+            custom_id.read().clone()
         } else {
-            custom_id.read().to_lowercase().chars()
-                .filter(|c| c.is_alphanumeric() || *c == '-')
-                .collect::<String>()
+            let base_id = if custom_id.read().trim().is_empty() {
+                computed_id_for_submit.clone()
+            } else {
+                custom_id.read().to_lowercase().chars()
+                    .filter(|c| c.is_alphanumeric() || *c == '-')
+                    .collect::<String>()
+            };
+
+            if base_id.is_empty() {
+                error_msg.set("Tunnel ID cannot be empty".to_string());
+                return;
+            }
+
+            if base_id.contains("-tunnel-") {
+                base_id
+            } else {
+                format!("{}-tunnel-{}", base_id, generate_random_suffix())
+            }
         };
 
         if final_id.is_empty() {
@@ -83,7 +130,7 @@ pub fn AddTunnel(
             div {
                 class: "view-header",
                 style: "padding: 0; border-bottom: none; height: auto; margin-bottom: var(--spacing-sm);",
-                h2 { class: "view-title", "Add New Tunnel" }
+                h2 { class: "view-title", if is_editing { "Edit Tunnel" } else { "Add New Tunnel" } }
             }
 
             div {
@@ -101,6 +148,7 @@ pub fn AddTunnel(
                                 tunnel_type.set(TunnelType::Port);
                                 error_msg.set("".to_string());
                             },
+                            disabled: is_editing,
                             "Port Proxy"
                         }
                         Button {
@@ -109,6 +157,7 @@ pub fn AddTunnel(
                                 tunnel_type.set(TunnelType::VirtualDomain);
                                 error_msg.set("".to_string());
                             },
+                            disabled: is_editing,
                             "Virtual Domain"
                         }
                     }
@@ -166,7 +215,8 @@ pub fn AddTunnel(
                     label { class: "form-label", "Tunnel ID / Subdomain (Optional)" }
                     TextInput {
                         value: "{custom_id}",
-                        placeholder: "e.g. {computed_id}".to_string(),
+                        placeholder: if is_editing { "Tunnel ID cannot be changed" } else { "e.g. {computed_id}-tunnel-xxxx" },
+                        disabled: is_editing,
                         oninput: move |e: FormEvent| custom_id.set(e.value())
                     }
                 }
@@ -183,7 +233,14 @@ pub fn AddTunnel(
                     Button {
                         variant: "primary".to_string(),
                         onclick: handle_submit,
-                        "Create Tunnel"
+                        if is_editing { "Save Changes" } else { "Create Tunnel" }
+                    }
+                    if is_editing {
+                        Button {
+                            variant: "secondary".to_string(),
+                            onclick: move |e| oncancel.call(e),
+                            "Cancel"
+                        }
                     }
                 }
             }

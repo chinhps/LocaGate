@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "LocaGate - Tunnel Proxy by ChinhDev",
+        "title": "LocaGate - Tunnel Proxy",
         "width": 900,
         "height": 650
       }
