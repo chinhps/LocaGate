@@ -241,7 +241,7 @@ pub fn Settings(
                         href: "https://chinh.dev",
                         target: "_blank",
                         style: "color: var(--color-primary); text-decoration: underline;",
-                        "ChinhDEV"
+                        "ChinhDev"
                     }
                 }
             }
