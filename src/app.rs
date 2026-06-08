@@ -52,6 +52,7 @@ struct RequestLogEvent {
     status: u16,
     duration_ms: u64,
     timestamp: u64,
+    category: String,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -69,6 +70,8 @@ pub fn App() -> Element {
     let mut worker_url = use_signal(|| "".to_string());
     let mut auth_token = use_signal(|| "".to_string());
     let mut tunnels = use_signal(|| Vec::<TunnelConfig>::new());
+    let mut max_logs = use_signal(|| 100u32);
+    let mut sidebar_collapsed = use_signal(|| false);
     
     // Runtime statuses and request logs
     let mut statuses = use_signal(|| HashMap::<String, String>::new());
@@ -85,6 +88,7 @@ pub fn App() -> Element {
             worker_url.set(conf.worker_url);
             auth_token.set(conf.auth_token);
             tunnels.set(conf.tunnels);
+            max_logs.set(conf.max_logs);
         }
 
         if let Ok(active) = call_tauri::<Vec<String>, _>("get_active_tunnels", &()).await {
@@ -92,6 +96,19 @@ pub fn App() -> Element {
             for id in active {
                 statuses_lock.insert(id, "connected".to_string());
             }
+        }
+
+        if let Ok(stored) = call_tauri::<Vec<RequestLogEvent>, _>("get_request_logs", &()).await {
+            logs.set(stored.into_iter().map(|event| crate::pages::logs::RequestLog {
+                tunnel_id: event.tunnel_id,
+                request_id: event.request_id,
+                method: event.method,
+                path: event.path,
+                status: event.status,
+                duration_ms: event.duration_ms,
+                timestamp: event.timestamp,
+                category: event.category,
+            }).collect());
         }
     });
 
@@ -115,10 +132,12 @@ pub fn App() -> Element {
     // Event listener: Relayed Request Logs
     use_effect(move || {
         let mut logs_clone = logs.clone();
+        let max_logs_clone = max_logs.clone();
         let closure = Closure::wrap(Box::new(move |event_obj: JsValue| {
             if let Ok(payload_val) = js_sys::Reflect::get(&event_obj, &JsValue::from_str("payload")) {
                 if let Ok(event) = serde_wasm_bindgen::from_value::<RequestLogEvent>(payload_val) {
-                    logs_clone.write().push(crate::pages::logs::RequestLog {
+                    let mut logs_write = logs_clone.write();
+                    let entry = crate::pages::logs::RequestLog {
                         tunnel_id: event.tunnel_id,
                         request_id: event.request_id,
                         method: event.method,
@@ -126,7 +145,20 @@ pub fn App() -> Element {
                         status: event.status,
                         duration_ms: event.duration_ms,
                         timestamp: event.timestamp,
-                    });
+                        category: event.category,
+                    };
+
+                    if let Some(pos) = logs_write.iter().position(|l| l.request_id == entry.request_id) {
+                        logs_write[pos] = entry;
+                    } else {
+                        logs_write.push(entry);
+                    }
+
+                    let limit = (*max_logs_clone.read()).max(1) as usize;
+                    if logs_write.len() > limit {
+                        let excess = logs_write.len() - limit;
+                        logs_write.drain(0..excess);
+                    }
                 }
             }
         }) as Box<dyn FnMut(JsValue)>);
@@ -189,6 +221,9 @@ pub fn App() -> Element {
 
     let handle_clear_logs = move |_| {
         logs.write().clear();
+        spawn(async move {
+            let _ = call_tauri::<(), _>("clear_request_logs", &()).await;
+        });
     };
 
     let dashboard_class = if current_page() == ActivePage::Dashboard { "active" } else { "" };
@@ -203,7 +238,7 @@ pub fn App() -> Element {
             
             // Sidebar Navigation
             aside {
-                class: "sidebar",
+                class: if sidebar_collapsed() { "sidebar collapsed" } else { "sidebar" },
                 div {
                     div {
                         class: "brand-section",
@@ -213,7 +248,12 @@ pub fn App() -> Element {
                                 src: "/assets/app_icon.png",
                                 class: "brand-logo"
                             }
-                            "LocaGate"
+                            span { class: "brand-text", "LocaGate" }
+                        }
+                        button {
+                            class: "collapse-btn",
+                            onclick: move |_| sidebar_collapsed.set(!sidebar_collapsed()),
+                            if sidebar_collapsed() { "»" } else { "«" }
                         }
                     }
                     
@@ -222,7 +262,8 @@ pub fn App() -> Element {
                         li {
                             class: "nav-item {dashboard_class}",
                             onclick: move |_| current_page.set(ActivePage::Dashboard),
-                            "Dashboard"
+                            span { class: "nav-icon", "D" }
+                            span { class: "nav-text", "Dashboard" }
                         }
                         li {
                             class: "nav-item {add_tunnel_class}",
@@ -230,18 +271,21 @@ pub fn App() -> Element {
                                 editing_tunnel.set(None);
                                 current_page.set(ActivePage::AddTunnel);
                             },
-                            "Add Tunnel"
+                            span { class: "nav-icon", "+" }
+                            span { class: "nav-text", "Add Tunnel" }
                         }
                         li {
                             class: "nav-item {logs_class}",
                             onclick: move |_| current_page.set(ActivePage::Logs),
-                            "Request Logs"
+                            span { class: "nav-icon", "L" }
+                            span { class: "nav-text", "Request Logs" }
                         }
                         if developer_mode() {
                             li {
                                 class: "nav-item {settings_class}",
                                 onclick: move |_| current_page.set(ActivePage::Settings),
-                                "Settings"
+                                span { class: "nav-icon", "S" }
+                                span { class: "nav-text", "Settings" }
                             }
                         }
                     }
@@ -259,7 +303,8 @@ pub fn App() -> Element {
                             click_count.set(count);
                         }
                     },
-                    "status: online"
+                    span { class: "nav-text", "status: online" }
+                    span { class: "nav-icon", style: "color: var(--color-accent);", "●" }
                 }
             }
             
@@ -303,6 +348,7 @@ pub fn App() -> Element {
                             Settings {
                                 worker_url: worker_url,
                                 auth_token: auth_token,
+                                max_logs: max_logs,
                             }
                         }
                     }

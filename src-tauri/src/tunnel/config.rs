@@ -20,6 +20,12 @@ pub struct AppConfig {
     pub worker_url: String,
     pub auth_token: String,
     pub tunnels: Vec<TunnelConfig>,
+    #[serde(default = "default_max_logs")]
+    pub max_logs: u32,
+}
+
+fn default_max_logs() -> u32 {
+    200
 }
 
 impl Default for AppConfig {
@@ -28,6 +34,7 @@ impl Default for AppConfig {
             worker_url: "".to_string(),
             auth_token: "".to_string(),
             tunnels: Vec::new(),
+            max_logs: 200,
         }
     }
 }

@@ -20,4 +20,10 @@ pub struct AppConfig {
     pub worker_url: String,
     pub auth_token: String,
     pub tunnels: Vec<TunnelConfig>,
+    #[serde(default = "default_max_logs")]
+    pub max_logs: u32,
+}
+
+fn default_max_logs() -> u32 {
+    200
 }

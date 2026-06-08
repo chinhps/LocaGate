@@ -94,11 +94,13 @@ pub fn update_settings(
     app_handle: AppHandle,
     worker_url: String,
     auth_token: String,
+    max_logs: u32,
 ) -> Result<(), String> {
-    println!("[Backend] Command update_settings invoked with worker_url: {}, auth_token: {}", worker_url, auth_token);
+    println!("[Backend] Command update_settings invoked with worker_url: {}, auth_token: {}, max_logs: {}", worker_url, auth_token, max_logs);
     let mut state_lock = state.0.lock().map_err(|e| e.to_string())?;
     state_lock.config.worker_url = worker_url;
     state_lock.config.auth_token = auth_token;
+    state_lock.config.max_logs = max_logs;
     save_config_to_disk(&app_handle, &state_lock.config)?;
     Ok(())
 }
@@ -158,6 +160,7 @@ pub fn start_tunnel(
         config,
         worker_url,
         auth_token,
+        state_lock.config.max_logs,
     );
 
     state_lock.active_tunnels.insert(id, stop_tx);

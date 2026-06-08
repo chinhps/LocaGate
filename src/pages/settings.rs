@@ -7,9 +7,11 @@ use wasm_bindgen::JsCast;
 pub fn Settings(
     mut worker_url: Signal<String>,
     mut auth_token: Signal<String>,
+    mut max_logs: Signal<u32>,
 ) -> Element {
     let mut url_sig = use_signal(|| worker_url.read().clone());
     let mut token_sig = use_signal(|| auth_token.read().clone());
+    let mut max_logs_sig = use_signal(|| max_logs.read().to_string());
     let mut is_saving = use_signal(|| false);
     let mut saved = use_signal(|| false);
     let mut error_msg = use_signal(|| "".to_string());
@@ -17,6 +19,7 @@ pub fn Settings(
     let handle_save = move |_| {
         let url = url_sig.read().clone();
         let token = token_sig.read().clone();
+        let max_l = max_logs_sig.read().parse::<u32>().unwrap_or(100);
         
         is_saving.set(true);
         saved.set(false);
@@ -27,16 +30,19 @@ pub fn Settings(
         struct UpdateSettingsArgs {
             worker_url: String,
             auth_token: String,
+            max_logs: u32,
         }
 
         spawn(async move {
             match crate::app::call_tauri::<(), _>("update_settings", &UpdateSettingsArgs {
                 worker_url: url.clone(),
                 auth_token: token.clone(),
+                max_logs: max_l,
             }).await {
                 Ok(_) => {
                     worker_url.set(url);
                     auth_token.set(token);
+                    max_logs.set(max_l);
                     saved.set(true);
                     is_saving.set(false);
                     
@@ -104,6 +110,20 @@ pub fn Settings(
                     span {
                         style: "font-size: 11px; color: var(--color-muted); margin-top: 4px; display: block;",
                         "A secret token configured in your wrangler.toml to authenticate tunnel connections."
+                    }
+                }
+                div {
+                    class: "form-group",
+                    label { class: "form-label", "Max Logs Retained" }
+                    TextInput {
+                        value: "{max_logs_sig}",
+                        placeholder: "200".to_string(),
+                        oninput: move |e: FormEvent| max_logs_sig.set(e.value()),
+                        r#type: "number".to_string()
+                    }
+                    span {
+                        style: "font-size: 11px; color: var(--color-muted); margin-top: 4px; display: block;",
+                        "The maximum number of request logs kept in memory in the UI to prevent browser slowdown."
                     }
                 }
 
