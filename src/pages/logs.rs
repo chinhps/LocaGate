@@ -198,6 +198,7 @@ pub fn Logs(
                                     
                                     // Extract owned values before rsx! block to prevent borrows
                                     let log_id = log.request_id.clone();
+                                    let log_id_for_click = log_id.clone();
                                     let log_method = log.method.clone();
                                     let log_path = log.path.clone();
                                     let log_status = log.status;
@@ -208,7 +209,7 @@ pub fn Logs(
                                             class: "{active_class}",
                                             key: "{log_id}",
                                             onclick: move |_| {
-                                                selected_request_id.set(Some(log_id.clone()));
+                                                selected_request_id.set(Some(log_id_for_click.clone()));
                                                 inspector_tab.set("headers".to_string());
                                             },
                                             span { class: "log-method {log_method}", "{log_method}" }
